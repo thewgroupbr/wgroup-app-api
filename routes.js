@@ -74,5 +74,130 @@ router.get("/api/listings/:id/summary", async (req, res) => {
     return res.status(500).json({ error: String(e) });
   }
 });
+// ---------------- DEBUG ROUTES ----------------
+function mapRowsByHeader(rows) {
+  if (!rows || !rows.length) return [];
+  const [header, ...data] = rows;
+  return data.map((r) =>
+    Object.fromEntries(header.map((h, i) => [String(h).trim(), r[i] ?? ""]))
+  );
+}
+function parseISOorBlank(s) {
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+function withinLastNDays(dateStr, days = 30) {
+  const d = parseISOorBlank(dateStr);
+  if (!d) return false;
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  return d >= since;
+}
+
+// List ALL listings rows
+router.get("/debug/listings", async (_req, res) => {
+  try {
+    const rows = mapRowsByHeader(await readRange("Listings!A1:I100000"));
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
+// METRICS: all rows for MLS
+router.get("/debug/metrics/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const rows = mapRowsByHeader(await readRange("Metrics_Daily!A1:D100000"));
+    const matches = rows.filter(r => String(r.mls_id) === String(id));
+    res.json(matches);
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
+// METRICS: breakdown of last-30d include/exclude (with reasons)
+router.get("/debug/metrics/:id/last30", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const rows = mapRowsByHeader(await readRange("Metrics_Daily!A1:D100000"))
+      .filter(r => String(r.mls_id) === String(id));
+    const since = new Date(); since.setDate(since.getDate() - 30);
+    const included = [];
+    const excluded = [];
+    for (const r of rows) {
+      const d = parseISOorBlank(r.date);
+      if (!d) { excluded.push({ row: r, reason: "bad date" }); continue; }
+      if (d < since) { excluded.push({ row: r, reason: "older than 30d" }); continue; }
+      included.push(r);
+    }
+    res.json({ since: since.toISOString().slice(0,10), included, excluded });
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
+// SHOWINGS: all rows for MLS
+router.get("/debug/showings/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const rows = mapRowsByHeader(await readRange("Showings_Daily!A1:D100000"));
+    const matches = rows.filter(r => String(r.mls_id) === String(id));
+    res.json(matches);
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
+// SHOWINGS: last-30d breakdown
+router.get("/debug/showings/:id/last30", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const rows = mapRowsByHeader(await readRange("Showings_Daily!A1:D100000"))
+      .filter(r => String(r.mls_id) === String(id));
+    const since = new Date(); since.setDate(since.getDate() - 30);
+    const included = [];
+    const excluded = [];
+    for (const r of rows) {
+      const d = parseISOorBlank(r.date);
+      if (!d) { excluded.push({ row: r, reason: "bad date" }); continue; }
+      if (d < since) { excluded.push({ row: r, reason: "older than 30d" }); continue; }
+      included.push(r);
+    }
+    res.json({ since: since.toISOString().slice(0,10), included, excluded });
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
+// ADS: all rows for MLS
+router.get("/debug/ads/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const rows = mapRowsByHeader(await readRange("Ads_Daily!A1:F100000"));
+    const matches = rows.filter(r => String(r.mls_id) === String(id));
+    res.json(matches);
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
+// ADS: last-30d breakdown
+router.get("/debug/ads/:id/last30", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const rows = mapRowsByHeader(await readRange("Ads_Daily!A1:F100000"))
+      .filter(r => String(r.mls_id) === String(id));
+    const since = new Date(); since.setDate(since.getDate() - 30);
+    const included = [];
+    const excluded = [];
+    for (const r of rows) {
+      const d = parseISOorBlank(r.date);
+      if (!d) { excluded.push({ row: r, reason: "bad date" }); continue; }
+      if (d < since) { excluded.push({ row: r, reason: "older than 30d" }); continue; }
+      included.push(r);
+    }
+    res.json({ since: since.toISOString().slice(0,10), included, excluded });
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
+// FEEDBACK: all rows for MLS (newest first)
+router.get("/debug/feedback/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const rows = mapRowsByHeader(await readRange("Feedback!A1:D100000"))
+      .filter(r => String(r.mls_id) === String(id))
+      .sort((a,b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
 
 module.exports = router;
