@@ -48,8 +48,8 @@ function sum30d(rows, dateField, filters) {
 
 // Public API (used by routes)
 async function getListing(mls_id) {
-  // UPDATED: Changed from A1:I100000 to A1:K100000 to include photo_url and Live Listing URL
-  const rows = rowsByHeader(await readRange("Listings!A1:K100000"));
+  // UPDATED: Changed from A1:K100000 to A1:L100000 to include password column
+  const rows = rowsByHeader(await readRange("Listings!A1:L100000"));
   return rows.find((r) => String(r.mls_id) === String(mls_id)) || null;
 }
 
