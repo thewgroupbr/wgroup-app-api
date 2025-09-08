@@ -7,7 +7,6 @@ async function getSheetsClient() {
   if (!keyFile || !sheetId) {
     throw new Error("Missing GOOGLE_SA_KEY_FILE or SHEET_ID env vars");
   }
-
   const auth = new google.auth.GoogleAuth({
     keyFile,
     scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
@@ -49,7 +48,8 @@ function sum30d(rows, dateField, filters) {
 
 // Public API (used by routes)
 async function getListing(mls_id) {
-  const rows = rowsByHeader(await readRange("Listings!A1:I100000"));
+  // UPDATED: Changed from A1:I100000 to A1:K100000 to include photo_url and Live Listing URL
+  const rows = rowsByHeader(await readRange("Listings!A1:K100000"));
   return rows.find((r) => String(r.mls_id) === String(mls_id)) || null;
 }
 
