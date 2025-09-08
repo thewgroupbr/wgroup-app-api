@@ -36,12 +36,31 @@ router.get("/api/listings/:id/summary", async (req, res) => {
     const nowIso = new Date().toISOString();
     const toNum = (v) => (v === "" || v == null ? null : Number(v));
 
+    // Helper function to convert Google Drive URLs to direct image URLs
+    function convertGoogleDriveUrl(url) {
+      if (!url || url === "") return null;
+      
+      // Check if it's a Google Drive URL
+      const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (driveMatch) {
+        const fileId = driveMatch[1];
+        return `https://drive.google.com/uc?id=${fileId}&export=view`;
+      }
+      
+      // Return original URL if not a Google Drive URL
+      return url;
+    }
+
+    // Get photo URL and MLS URL with better field mapping
+    const photoUrl = convertGoogleDriveUrl(L.photo_url || L["photo_url"] || null);
+    const mlsUrl = L["Live Listing URL"] || L.mls_url || L.listing_url || L.url || null;
+
     return res.json({
       listingId: id,
       address: L.address || null,
-      // NEW: Add photo_url and mls_url from your Google Sheets columns
-      photo_url: L.photo_url || null,
-      mls_url: L["Live Listing URL"] || L.live_listing_url || null, // Handle both possible column names
+      // Use converted photo URL and direct MLS URL
+      photo_url: photoUrl,
+      mls_url: mlsUrl,
       status: { value: L.status || "-", source: "Google Sheet", updatedAt: nowIso },
       price: {
         current: toNum(L.list_price),
