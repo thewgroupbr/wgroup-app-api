@@ -11,10 +11,10 @@ const {
 
 const router = express.Router();
 
-// Health check — verifies Sheets access & headers (UPDATED: now reads more columns)
+// Health check — verifies Sheets access & headers (UPDATED: now reads more columns including password)
 router.get("/health/sheets", async (req, res) => {
   try {
-    const header = await readRange("Listings!A1:K1"); // UPDATED: A1:K1 to include new columns
+    const header = await readRange("Listings!A1:L1"); // UPDATED: A1:L1 to include password column
     return res.json({ ok: true, sheetId: process.env.SHEET_ID, header: header[0] || [] });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e) });
@@ -51,16 +51,18 @@ router.get("/api/listings/:id/summary", async (req, res) => {
       return url;
     }
 
-    // Get photo URL and MLS URL with better field mapping
+    // Get photo URL, MLS URL, and password with better field mapping
     const photoUrl = convertGoogleDriveUrl(L.photo_url || L["photo_url"] || null);
     const mlsUrl = L["Live Listing URL"] || L.mls_url || L.listing_url || L.url || null;
+    const password = L.password || L.access_code || L.listing_password || L["Access Code"] || null;
 
     return res.json({
       listingId: id,
       address: L.address || null,
-      // Use converted photo URL and direct MLS URL
+      // Include photo URL, MLS URL, and password
       photo_url: photoUrl,
       mls_url: mlsUrl,
+      password: password, // NEW: Include password for authentication
       status: { value: L.status || "-", source: "Google Sheet", updatedAt: nowIso },
       price: {
         current: toNum(L.list_price),
@@ -117,11 +119,16 @@ function withinLastNDays(dateStr, days = 30) {
   return d >= since;
 }
 
-// List ALL listings rows (UPDATED: now reads more columns)
+// List ALL listings rows (UPDATED: now reads more columns including password)
 router.get("/debug/listings", async (_req, res) => {
   try {
-    const rows = mapRowsByHeader(await readRange("Listings!A1:K100000")); // UPDATED: A1:K100000
-    res.json(rows);
+    const rows = mapRowsByHeader(await readRange("Listings!A1:L100000")); // UPDATED: A1:L100000
+    // Remove password field from debug output for security
+    const sanitizedRows = rows.map(row => {
+      const { password, access_code, listing_password, "Access Code": accessCode, ...safeRow } = row;
+      return safeRow;
+    });
+    res.json(sanitizedRows);
   } catch (e) { res.status(500).json({ error: String(e) }); }
 });
 
