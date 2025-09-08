@@ -11,10 +11,10 @@ const {
 
 const router = express.Router();
 
-// Health check — verifies Sheets access & headers
+// Health check — verifies Sheets access & headers (UPDATED: now reads more columns)
 router.get("/health/sheets", async (req, res) => {
   try {
-    const header = await readRange("Listings!A1:I1");
+    const header = await readRange("Listings!A1:K1"); // UPDATED: A1:K1 to include new columns
     return res.json({ ok: true, sheetId: process.env.SHEET_ID, header: header[0] || [] });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e) });
@@ -39,6 +39,9 @@ router.get("/api/listings/:id/summary", async (req, res) => {
     return res.json({
       listingId: id,
       address: L.address || null,
+      // NEW: Add photo_url and mls_url from your Google Sheets columns
+      photo_url: L.photo_url || null,
+      mls_url: L["Live Listing URL"] || L.live_listing_url || null, // Handle both possible column names
       status: { value: L.status || "-", source: "Google Sheet", updatedAt: nowIso },
       price: {
         current: toNum(L.list_price),
@@ -74,6 +77,7 @@ router.get("/api/listings/:id/summary", async (req, res) => {
     return res.status(500).json({ error: String(e) });
   }
 });
+
 // ---------------- DEBUG ROUTES ----------------
 function mapRowsByHeader(rows) {
   if (!rows || !rows.length) return [];
@@ -94,10 +98,10 @@ function withinLastNDays(dateStr, days = 30) {
   return d >= since;
 }
 
-// List ALL listings rows
+// List ALL listings rows (UPDATED: now reads more columns)
 router.get("/debug/listings", async (_req, res) => {
   try {
-    const rows = mapRowsByHeader(await readRange("Listings!A1:I100000"));
+    const rows = mapRowsByHeader(await readRange("Listings!A1:K100000")); // UPDATED: A1:K100000
     res.json(rows);
   } catch (e) { res.status(500).json({ error: String(e) }); }
 });
